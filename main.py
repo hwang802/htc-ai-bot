@@ -38,15 +38,15 @@ import streamlit as st
 
 def bedrock_chatbot() : 
 
-    aws_access_key_id = os.getenv('aws_access_key_id')
-    aws_secret_access_key = os.getenv('aws_secret_access_key')
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 
     #print(aws_access_key_id)
 
     bedrock_llm = Bedrock(
         #credentials_profile_name = 'default',
-        #aws_access_key_id=aws_access_key_id,
-        #aws_secret_access_key=aws_secret_access_key,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
         region_name = 'us-east-1',
         model_id= 'anthropic.claude-v2:1',
         model_kwargs= {
