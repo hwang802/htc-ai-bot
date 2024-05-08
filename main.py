@@ -44,9 +44,9 @@ def bedrock_chatbot() :
     #print(aws_access_key_id)
 
     bedrock_llm = Bedrock(
-        #credentials_profile_name = 'default',
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
+        credentials_profile_name = 'default',
+        #aws_access_key_id=aws_access_key_id,
+        #aws_secret_access_key=aws_secret_access_key,
         region_name = 'us-east-1',
         model_id= 'anthropic.claude-v2:1',
         model_kwargs= {
