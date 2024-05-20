@@ -10,7 +10,7 @@ import fitz
 
 from loguru import logger
 
-from langchain_community.llms import Bedrock
+#from langchain_community.llms import Bedrock
 from langchain_community.chat_models import BedrockChat
 from langchain.globals import set_verbose
 
