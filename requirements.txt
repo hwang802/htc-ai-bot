@@ -11,3 +11,4 @@ docx2txt
 streamlit
 boto3
 fitz
+pymupdf
