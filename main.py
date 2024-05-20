@@ -6,10 +6,12 @@ import streamlit as st
 #text의 token개수를 새기 위한 라이브러리
 import tiktoken
 import boto3
+import fitz
 
 from loguru import logger
 
 from langchain_community.llms import Bedrock
+from langchain_community.chat_models import BedrockChat
 from langchain.globals import set_verbose
 
 #Memory를 가지고 있는 Chain
@@ -39,10 +41,8 @@ import streamlit as st
 
 def bedrock_chatbot() : 
 
-    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-
-    #print(aws_access_key_id)
+    aws_access_key_id = os.getenv('aws_access_key_id')
+    aws_secret_access_key = os.getenv('aws_secret_access_key')
 
     boto3_bedrock = boto3.client(
         service_name = 'bedrock-runtime',
@@ -50,20 +50,22 @@ def bedrock_chatbot() :
         aws_access_key_id = aws_access_key_id,
         aws_secret_access_key = aws_secret_access_key
     )
-    
-    bedrock_llm = Bedrock(
+
+    #print(aws_access_key_id)
+
+    bedrock_llm = BedrockChat(
         #credentials_profile_name = 'default',
         #aws_access_key_id=aws_access_key_id,
         #aws_secret_access_key=aws_secret_access_key,
         client=boto3_bedrock,
         region_name = 'us-east-1',
-        model_id= 'anthropic.claude-v2:1',
+        model_id= 'anthropic.claude-3-haiku-20240307-v1:0',
         model_kwargs= {
-            "prompt": "\n\nHuman:<prompt>\n\nAssistant:",
+            "messages": "\n\nHuman:<prompt>\n\nAssistant:",
             "temperature": 0.5,
             "top_p": 1,
             "top_k": 250,
-            "max_tokens_to_sample": 512
+            #"max_tokens_to_sample": 512
         }
     )
 
@@ -75,26 +77,43 @@ def tiktoken_len(text):
     tokens = tokenizer.encode(text)
     return len(tokens)
 
+def extract_text_from_pdf(file_name):
+    doc = fitz.open(file_name)
+    texts = []
+    for page in doc:
+        texts.append(page.get_text("text"))
+    return texts
+
+class Document:
+    def __init__(self, page_content, metadata=None):
+        self.page_content = page_content
+        self.metadata = metadata if metadata else {}
+
 #각각의 파일들을 로드해서 넘겨줌
 def get_text(docs):
     doc_list = []
     for doc in docs:
-        file_name = doc.name # doc 객체의 이름을 파일 이름으로 사용 
+        file_name = doc.name  # doc 객체의 이름을 파일 이름으로 사용
         with open(file_name, "wb") as file:
             file.write(doc.getvalue())
             logger.info(f"Uploaded {file_name}")
 
-        if '.pdf' in doc.name:
-            loader = PyPDFLoader(file_name)
-            documents = loader.load_and_split()
-        elif '.docx' in doc.name:
+        # PDF 파일 처리를 위한 PyMuPDF 로더 적용
+        if '.pdf' in file_name:
+            text_chunks = extract_text_from_pdf(file_name)
+            # Metadata 예시로 추가, 필요에 따라 조정 가능
+            metadata = {"source": "PDF", "filename": file_name}
+            documents = [Document(text, metadata) for text in text_chunks]
+            doc_list.extend(documents)
+        elif '.docx' in file_name:
             loader = Docx2txtLoader(file_name)
             documents = loader.load_and_split()
-        elif '.pptx' in doc.name:
+            doc_list.extend(documents)
+        elif '.pptx' in file_name:
             loader = UnstructuredPowerPointLoader(file_name)
             documents = loader.load_and_split()
+            doc_list.extend(documents)
 
-        doc_list.extend(documents)        
     return doc_list
 
 #text를 chunk단위로 변환하여 return
@@ -106,6 +125,9 @@ def get_text_chunks(text):
     )
 
     chunks = text_splitter.split_documents(text)
+
+    print("Text chunks : ", chunks)
+
     return chunks
 
 #chunk를 vectordb에 embedding하여 저장
@@ -115,6 +137,10 @@ def get_vectorstore(text_chunks):
         model_kwargs = {'device': 'cpu'},
         encode_kwargs = {'normalize_embeddings': True}
     )
+
+    if not embeddings:
+        raise ValueError("No embeddings generated from the provided text chunks.")
+
     vectordb = FAISS.from_documents(text_chunks, embeddings)
     return vectordb
 
