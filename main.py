@@ -6,7 +6,7 @@ import streamlit as st
 #text의 token개수를 새기 위한 라이브러리
 import tiktoken
 import boto3
-import fitz
+import pymupdf as fitz
 
 from loguru import logger
 
